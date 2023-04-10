@@ -30,7 +30,7 @@ st.set_page_config(
 
 st.header("{}".format(page_title))
 
-form = st.empty()
+form = st.container()
 
 # Functions
 def edit_data(response):
