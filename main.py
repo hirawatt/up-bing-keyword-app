@@ -35,7 +35,7 @@ form = st.empty()
 # Functions
 def edit_data(response):
     df = pd.DataFrame(response.json()["webPages"]["value"])
-    df.insert(0, column="select", value="st.selectbox")
+    #df.insert(0, column="select", value="st.selectbox")
     edited_df = st.experimental_data_editor(df)
     return edited_df
 
@@ -43,7 +43,7 @@ def search_bing():
     if query != "":
         # Construct a request
         mkt = 'en-US'
-        params = { 'q': query, 'mkt': mkt }
+        params = { 'q': query, 'mkt': mkt , 'count': 50}
         headers = { 'Ocp-Apim-Subscription-Key': subscription_key }
 
         # Call the API
@@ -68,7 +68,7 @@ def search_bing():
                 file_name="{}_data.xml".format(query),
                 mime="text/plain"
             )
-            #edited_df = edit_data(response)
+            edited_df = edit_data(response)
             
             #b64 = base64.b64encode
             #html_download = '<a href="data:text/plain;base64;{}" download="{}_data.xml">Download XML File</a>'.format(b64, query)
