@@ -1,0 +1,10 @@
+[server]
+#maxUploadSize = 10
+
+[runner]
+#magicEnabled = false
+
+[ui]
+#hideTopBar = true
+
+[global]
