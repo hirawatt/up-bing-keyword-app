@@ -5,6 +5,7 @@ import pandas as pd
 import json
 import uuid
 import xml.etree.ElementTree as ET
+import boto3
 
 # credentials
 page_title = st.secrets['initialize']['page_title']
@@ -14,9 +15,23 @@ sidebar_title = st.secrets['initialize']['sidebar_title']
 subscription_key = st.secrets['BING_SEARCH_V7_SUBSCRIPTION_KEY']
 endpoint = st.secrets['BING_SEARCH_V7_ENDPOINT']
 
-logo_file = '💰'
+# S3 config
+accountid = st.secrets['aws_s3']['accountid']
+access_key_id = st.secrets['aws_s3']['access_key_id']
+access_key_secret = st.secrets['aws_s3']['access_key_secret']
+
+# S3 buckets setup
+@st.cache_resource()
+def s3_db():
+    s3 = boto3.client('s3',
+        endpoint_url = 'https://{}.s3.amazonaws.com/'.format(accountid),
+        aws_access_key_id = '{}'.format(access_key_id),
+        aws_secret_access_key = '{}'.format(access_key_secret)
+    )
+    return s3
 
 # streamlit
+logo_file = ''
 st.set_page_config(
     '{}'.format(page_title),
     '{}'.format(logo_file),
@@ -28,9 +43,7 @@ st.set_page_config(
 )
 
 # Main Code
-
 st.header("{}".format(page_title))
-
 form = st.container()
 
 # Functions
@@ -67,7 +80,6 @@ def search_bing(results_per_keyphrase):
             
             urls = modify_data(response).tolist()
             # Create XML Document
-
             # Create the root element for the sitemap
             urlset = ET.Element("urlset", xmlns="http://www.sitemaps.org/schemas/sitemap/0.9")
 
@@ -83,10 +95,16 @@ def search_bing(results_per_keyphrase):
             sitemap_xml = ET.tostring(urlset, encoding="unicode", method="xml")
 
             # Print the XML sitemap
-            st.write(sitemap_xml)
+            #st.write(sitemap_xml)
+            s3 = s3_db()
+            unique_filename = f'{uuid.uuid4()}.xml'
+            s3.put_object(Body=sitemap_xml, Bucket=accountid, Key=access_key_id, ACL='public-read')
+            url = f'https://{accountid}.s3.amazonaws.com/{unique_filename}'
+
+            st.write(url)
 
             # Save the XML sitemap to a file
-            with open("sitemap.xml", "w") as file:
+            with open(unique_filename, "w") as file:
                 file.write(sitemap_xml)
 
             st.write("XML Response for `{}`:".format(query))
@@ -109,15 +127,3 @@ with form.form("Enter Keyword"):
     query = st.text_area("Enter Keyword for Search", value="")
     results_per_keyphrase = st.number_input("Enter results per Keyphrase", value=50, min_value=1, max_value=300)
     submit = st.form_submit_button("Submit", on_click=search_bing, args=(results_per_keyphrase, ))
-
-x = uuid.uuid4().hex
-#st.write(str(x))
-
-'''
-filename = "data/python_data.xml"
-with open(filename, "rb") as xml_file:
-    #st.write(xml_file.read().decode('UTF-8'))
-    b64 = base64.b64encode(xml_file.read()).decode()
-href = '<a href="data:application/xml;base64;{}" download="{}_data.xml">Download XML File</a> (right-click and save as &lt;some_name&gt;.csv)'.format(b64, query)
-st.markdown(href, unsafe_allow_html=True)
-'''
