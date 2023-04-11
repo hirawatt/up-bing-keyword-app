@@ -4,7 +4,7 @@ import base64
 import pandas as pd
 import json
 import uuid
-import dicttoxml
+import xml.etree.ElementTree as ET
 
 # credentials
 page_title = st.secrets['initialize']['page_title']
@@ -34,11 +34,12 @@ st.header("{}".format(page_title))
 form = st.container()
 
 # Functions
-def edit_data(response):
+def modify_data(response):
+    #df = pd.DataFrame(response.json()["webPages"]["value"]) # all Data
+    #df.insert(0, column="select", value="st.selectbox") # TD - feature select box
     df = pd.DataFrame(response.json()["webPages"]["value"])
-    #df.insert(0, column="select", value="st.selectbox")
-    edited_df = st.experimental_data_editor(df)
-    return edited_df
+    urls = df['url']
+    return urls
 
 def input_sanitization(query):
     keywords = query.splitlines()
@@ -58,31 +59,46 @@ def search_bing(results_per_keyphrase):
             response = requests.get(endpoint, headers=headers, params=params)
             response.raise_for_status()
             progress_text = "Operation in progress. Please wait."
-            spinner = st.spinner(text=progress_text)
 
             #st.subheader("\nHeaders:\n")
             #st.write(response.headers)
             #st.subheader("\nJSON Response:\n")
             #st.json(response.json(), expanded=False)
             
-            global xml
-            xml = dicttoxml.dicttoxml(response.json(), return_bytes=False)
-            st.write("XML Response for `{}`:".format(query))
-            
-            # Writing to file
+            urls = modify_data(response).tolist()
+            # Create XML Document
 
-            with open('data/{}_data.xml'.format(query), 'w') as f:
-                f.write(xml)
+            # Create the root element for the sitemap
+            urlset = ET.Element("urlset", xmlns="http://www.sitemaps.org/schemas/sitemap/0.9")
+
+            # Add URLs to the sitemap
+            for url in urls:
+                # Create a url element for each URL
+                url_element = ET.SubElement(urlset, "url")
+                # Create a loc element and set its text to the URL
+                loc_element = ET.SubElement(url_element, "loc")
+                loc_element.text = url
+
+            # Generate the XML sitemap
+            sitemap_xml = ET.tostring(urlset, encoding="unicode", method="xml")
+
+            # Print the XML sitemap
+            st.write(sitemap_xml)
+
+            # Save the XML sitemap to a file
+            with open("sitemap.xml", "w") as file:
+                file.write(sitemap_xml)
+
+            st.write("XML Response for `{}`:".format(query))
 
             st.download_button(
                 label="Download XML File",
-                data=xml,
+                data=sitemap_xml,
                 file_name="{}_data.xml".format(query),
                 mime="application/xml"
             )
-            edited_df = edit_data(response)
             
-            return xml, query
+            return sitemap_xml, query
         except Exception as ex:
             raise ex
     else:
