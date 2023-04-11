@@ -58,50 +58,82 @@ def input_sanitization(query):
     keywords = query.splitlines()
     return keywords
 
-def search_bing(results_per_keyphrase):
-    keywords = input_sanitization(query)
-    no_of_keywords = len(keywords)
-    if no_of_keywords != 0 :
-        # Construct a request
-        mkt = 'en-US'
-        params = { 'q': query, 'mkt': mkt , 'count': results_per_keyphrase}
-        headers = { 'Ocp-Apim-Subscription-Key': subscription_key }
+# Function to call the Bing API with pagination
+def single_search_bing(query, count, subscription_key):
+    results = []
+    max_results_per_call = 50
+    base_url = "https://api.bing.microsoft.com/v7.0/search"
+    headers = {"Ocp-Apim-Subscription-Key": subscription_key}
+    
+    while len(results) < count:
+        offset = len(results)
+        params = {
+            "q": query,
+            "count": min(max_results_per_call, count - len(results)),
+            "offset": offset
+        }
+        response = requests.get(base_url, headers=headers, params=params)
+        response.raise_for_status()
+        data = response.json()
+        results.extend(data.get("webPages", {}).get("value", []))
+        
+        # Stop if there are no more results
+        if len(data.get("webPages", {}).get("value", [])) == 0:
+            break
+    
+    return results
 
-        # Call Bing API
-        try:
-            response = requests.get(endpoint, headers=headers, params=params)
-            response.raise_for_status()
-            #st.json(response.json(), expanded=False)
-            
-            urls = modify_data(response).tolist()
-            # Create XML Document
-            urlset = ET.Element("urlset", xmlns="http://www.sitemaps.org/schemas/sitemap/0.9")
-            for url in urls:
-                url_element = ET.SubElement(urlset, "url")
-                loc_element = ET.SubElement(url_element, "loc")
-                loc_element.text = url
+def search_bing(requested_count):
+    # Construct a request
+    mkt = 'en-US'
+    params = { 'q': query, 'mkt': mkt , 'count': requested_count}
+    headers = { 'Ocp-Apim-Subscription-Key': subscription_key }
+    results = []
+    for i in keywords:
+        # Call Bing API 
+        result = single_search_bing(i, requested_count, subscription_key)
+        results += result
+    #st.write(results)
+    all_urls = []
+    for j in results:
+        all_urls.append(j.get("url"))
+    #st.write(all_urls)
+    
+    # Create XML Document
+    urlset = ET.Element("urlset", xmlns="http://www.sitemaps.org/schemas/sitemap/0.9")
+    for url in all_urls:
+        url_element = ET.SubElement(urlset, "url")
+        loc_element = ET.SubElement(url_element, "loc")
+        loc_element.text = url
 
-            # Generate the XML sitemap
-            sitemap_xml = ET.tostring(urlset, encoding="unicode", method="xml")
+    # Generate the XML sitemap
+    sitemap_xml = ET.tostring(urlset, encoding="unicode", method="xml")
 
-            # Print the XML sitemap
-            s3 = s3_db()
-            unique_filename = f'{uuid.uuid4()}.xml'
-            content_type = 'application/xml'
-            s3.put_object(Body=sitemap_xml, Bucket=accountid, Key=unique_filename, ACL='public-read', ContentType=content_type)
-            url = f'https://{accountid}.s3.amazonaws.com/{accountid}/{unique_filename}'
+    # Print the XML sitemap
+    s3 = s3_db()
+    unique_filename = f'{uuid.uuid4()}.xml'
+    content_type = 'application/xml'
+    s3.put_object(Body=sitemap_xml, Bucket=accountid, Key=unique_filename, ACL='public-read', ContentType=content_type)
+    url = f'https://{accountid}.s3.amazonaws.com/{accountid}/{unique_filename}'
 
-            st.write("XML Response for `{}`:".format(query))
-            st.code(url, language="text")
+    st.write("XML Response for `{}`:".format(query))
+    st.code(url, language="text")
 
-            return sitemap_xml, query
-        except Exception as ex:
-            raise ex
-    else:
-        st.info("Enter Keyword for Search")
+    return sitemap_xml, query
 
 # Input Form
-with form.form("Enter Keyword"):
-    query = st.text_area("Enter your queries (one per line):")
-    requested_count = st.number_input("Enter results per Keyphrase", value=50, min_value=1, max_value=300)
-    submit = st.form_submit_button("Search", on_click=search_bing, args=(requested_count, ))
+query = st.text_area("Enter your queries (one per line):")
+requested_count = st.number_input("Enter results per Keyphrase", value=50, min_value=1, max_value=300)
+keywords = input_sanitization(query)
+no_of_keywords = len(keywords)
+no_of_urls = no_of_keywords * requested_count
+# Validation
+if no_of_keywords != 0:
+    if no_of_urls <= 50000:
+        submit = st.button("Search", on_click=search_bing, args=(requested_count, ))
+    else:
+        st.info("Enter fewer keyword/results")
+        submit = st.button("Search", disabled=True)
+else:
+    st.info("Enter Keyword for Search")
+    submit = st.button("Search", disabled=True)
