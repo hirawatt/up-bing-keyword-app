@@ -71,23 +71,13 @@ def search_bing(results_per_keyphrase):
         try:
             response = requests.get(endpoint, headers=headers, params=params)
             response.raise_for_status()
-            progress_text = "Operation in progress. Please wait."
-
-            #st.subheader("\nHeaders:\n")
-            #st.write(response.headers)
-            #st.subheader("\nJSON Response:\n")
             #st.json(response.json(), expanded=False)
             
             urls = modify_data(response).tolist()
             # Create XML Document
-            # Create the root element for the sitemap
             urlset = ET.Element("urlset", xmlns="http://www.sitemaps.org/schemas/sitemap/0.9")
-
-            # Add URLs to the sitemap
             for url in urls:
-                # Create a url element for each URL
                 url_element = ET.SubElement(urlset, "url")
-                # Create a loc element and set its text to the URL
                 loc_element = ET.SubElement(url_element, "loc")
                 loc_element.text = url
 
@@ -95,7 +85,6 @@ def search_bing(results_per_keyphrase):
             sitemap_xml = ET.tostring(urlset, encoding="unicode", method="xml")
 
             # Print the XML sitemap
-            #st.write(sitemap_xml)
             s3 = s3_db()
             unique_filename = f'{uuid.uuid4()}.xml'
             content_type = 'application/xml'
@@ -105,17 +94,6 @@ def search_bing(results_per_keyphrase):
             st.write("XML Response for `{}`:".format(query))
             st.code(url, language="text")
 
-            # Save the XML sitemap to a file
-            #with open(unique_filename, "w") as file:
-            #    file.write(sitemap_xml)
-
-            st.download_button(
-                label="Download XML File",
-                data=sitemap_xml,
-                file_name="{}_data.xml".format(query),
-                mime="application/xml"
-            )
-            
             return sitemap_xml, query
         except Exception as ex:
             raise ex
