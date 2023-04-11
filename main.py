@@ -102,6 +102,6 @@ def search_bing(results_per_keyphrase):
 
 # Input Form
 with form.form("Enter Keyword"):
-    query = st.text_area("Enter Keyword for Search", value="")
-    results_per_keyphrase = st.number_input("Enter results per Keyphrase", value=50, min_value=1, max_value=300)
-    submit = st.form_submit_button("Submit", on_click=search_bing, args=(results_per_keyphrase, ))
+    query = st.text_area("Enter your queries (one per line):")
+    requested_count = st.number_input("Enter results per Keyphrase", value=50, min_value=1, max_value=300)
+    submit = st.form_submit_button("Search", on_click=search_bing, args=(requested_count, ))
