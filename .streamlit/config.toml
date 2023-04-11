@@ -2,7 +2,7 @@
 #maxUploadSize = 10
 
 [runner]
-#magicEnabled = false
+magicEnabled = false
 
 [ui]
 #hideTopBar = true

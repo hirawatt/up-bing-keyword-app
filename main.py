@@ -3,6 +3,7 @@ import requests
 import base64
 import pandas as pd
 import json
+import uuid
 import dicttoxml
 
 # credentials
@@ -39,11 +40,11 @@ def edit_data(response):
     edited_df = st.experimental_data_editor(df)
     return edited_df
 
-def search_bing():
+def search_bing(results_per_keyphrase):
     if query != "":
         # Construct a request
         mkt = 'en-US'
-        params = { 'q': query, 'mkt': mkt , 'count': 50}
+        params = { 'q': query, 'mkt': mkt , 'count': results_per_keyphrase}
         headers = { 'Ocp-Apim-Subscription-Key': subscription_key }
 
         # Call the API
@@ -61,18 +62,20 @@ def search_bing():
             global xml
             xml = dicttoxml.dicttoxml(response.json(), return_bytes=False)
             st.write("XML Response for `{}`:".format(query))
+            
+            # Writing to file
+
+            with open('data/{}_data.xml'.format(query), 'w') as f:
+                f.write(xml)
 
             st.download_button(
                 label="Download XML File",
                 data=xml,
                 file_name="{}_data.xml".format(query),
-                mime="text/plain"
+                mime="application/xml"
             )
             edited_df = edit_data(response)
             
-            #b64 = base64.b64encode
-            #html_download = '<a href="data:text/plain;base64;{}" download="{}_data.xml">Download XML File</a>'.format(b64, query)
-            #st.markdown(html_download, unsafe_allow_html=True)
             return xml, query
         except Exception as ex:
             raise ex
@@ -81,5 +84,18 @@ def search_bing():
 
 # Query term(s) to search for
 with form.form("Enter Keyword"):
-    query = st.text_input("Enter Keyword for Search", value="")
-    submit = st.form_submit_button("Submit", on_click=search_bing)
+    query = st.text_area("Enter Keyword for Search", value="")
+    results_per_keyphrase = st.number_input("Enter results per Keyphrase", value=50, min_value=1, max_value=300)
+    submit = st.form_submit_button("Submit", on_click=search_bing, args=(results_per_keyphrase, ))
+
+x = uuid.uuid4().hex
+#st.write(str(x))
+
+'''
+filename = "data/python_data.xml"
+with open(filename, "rb") as xml_file:
+    #st.write(xml_file.read().decode('UTF-8'))
+    b64 = base64.b64encode(xml_file.read()).decode()
+href = '<a href="data:application/xml;base64;{}" download="{}_data.xml">Download XML File</a> (right-click and save as &lt;some_name&gt;.csv)'.format(b64, query)
+st.markdown(href, unsafe_allow_html=True)
+'''
