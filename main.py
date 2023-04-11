@@ -98,11 +98,12 @@ def search_bing(results_per_keyphrase):
             #st.write(sitemap_xml)
             s3 = s3_db()
             unique_filename = f'{uuid.uuid4()}.xml'
-            s3.put_object(Body=sitemap_xml, Bucket=accountid, Key=unique_filename, ACL='public-read')
+            content_type = 'application/xml'
+            s3.put_object(Body=sitemap_xml, Bucket=accountid, Key=unique_filename, ACL='public-read', ContentType=content_type)
             url = f'https://{accountid}.s3.amazonaws.com/{accountid}/{unique_filename}'
 
             st.write("XML Response for `{}`:".format(query))
-            st.code(url)
+            st.code(url, language="text")
 
             # Save the XML sitemap to a file
             #with open(unique_filename, "w") as file:
