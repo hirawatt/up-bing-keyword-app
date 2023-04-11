@@ -116,7 +116,7 @@ def search_bing(requested_count):
     s3.put_object(Body=sitemap_xml, Bucket=accountid, Key=unique_filename, ACL='public-read', ContentType=content_type)
     url = f'https://{accountid}.s3.amazonaws.com/{accountid}/{unique_filename}'
 
-    st.write("XML Response for `{}`:".format(query))
+    st.info("Copy below link & paste in browser for sitemap")
     st.code(url, language="text")
 
     return sitemap_xml, query
