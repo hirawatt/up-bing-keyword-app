@@ -40,14 +40,20 @@ def edit_data(response):
     edited_df = st.experimental_data_editor(df)
     return edited_df
 
+def input_sanitization(query):
+    keywords = query.splitlines()
+    return keywords
+
 def search_bing(results_per_keyphrase):
-    if query != "":
+    keywords = input_sanitization(query)
+    no_of_keywords = len(keywords)
+    if no_of_keywords != 0 :
         # Construct a request
         mkt = 'en-US'
         params = { 'q': query, 'mkt': mkt , 'count': results_per_keyphrase}
         headers = { 'Ocp-Apim-Subscription-Key': subscription_key }
 
-        # Call the API
+        # Call Bing API
         try:
             response = requests.get(endpoint, headers=headers, params=params)
             response.raise_for_status()
@@ -82,7 +88,7 @@ def search_bing(results_per_keyphrase):
     else:
         st.info("Enter Keyword for Search")
 
-# Query term(s) to search for
+# Input Form
 with form.form("Enter Keyword"):
     query = st.text_area("Enter Keyword for Search", value="")
     results_per_keyphrase = st.number_input("Enter results per Keyphrase", value=50, min_value=1, max_value=300)
